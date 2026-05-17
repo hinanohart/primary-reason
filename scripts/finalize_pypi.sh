@@ -1,103 +1,125 @@
 #!/usr/bin/env bash
-# finalize_pypi.sh — the single remaining manual step for primary-reason v0.1.x.
+# finalize_pypi.sh — the ONLY remaining manual step for primary-reason.
 #
-# Everything else (repo / wheel build / GitHub Release / branch protection / kill-criterion
-# tracking / re-audit fixes) is automated. PyPI trusted-publisher provisioning, however,
-# requires a logged-in pypi.org session and CANNOT be performed from a CLI token without
-# the user clicking through the web UI. This script walks you through it.
+# Why this exists:
+#   PyPI trusted-publisher provisioning requires a logged-in pypi.org session
+#   (you click through the website). Everything else — repo / wheel build /
+#   GitHub Release / branch protection / kill-criterion tracking / re-audit
+#   fixes — is already automated and on GitHub.
 #
-# Usage:
-#   bash scripts/finalize_pypi.sh
+# Where to run:
+#   Anywhere. The script does not depend on cwd; it talks to GitHub via `gh`
+#   and to PyPI via the web UI you open. `gh auth status` must be green.
 #
-# What this script does NOT do (intentionally):
-#   - It does NOT upload to PyPI (the release.yml workflow does, via OIDC).
-#   - It does NOT prompt for or store any PyPI password / API token. PyPI trusted publishing
-#     is token-less by design (OIDC), which is also why setup must happen on pypi.org.
+# What it does NOT do (intentionally):
+#   - Does NOT upload to PyPI (the release.yml workflow does, via OIDC).
+#   - Does NOT prompt for or write any PyPI password / API token. PyPI trusted
+#     publishing is token-less by design (OIDC), which is also why the setup
+#     itself must happen on pypi.org.
 #
-# What it does:
-#   1. Prints the exact claim values to paste into pypi.org.
-#   2. Opens the pypi.org publishing-management page in your browser (best effort).
-#   3. Waits for you to confirm the trusted publisher was created.
-#   4. Re-runs the latest failed release.yml workflow run.
-#   5. Verifies that pip install primary-reason==<latest-tag> works.
+# What it DOES:
+#   Step 1: prints the exact claim values to paste into pypi.org.
+#   Step 2: waits for you to confirm the trusted publisher was created.
+#   Step 3: re-runs the failed PyPI step of the most recent Release workflow.
+#   Step 4: verifies that `pip install primary-reason==<version>` resolves.
 
 set -euo pipefail
 
 REPO="hinanohart/primary-reason"
-WORKFLOW=".github/workflows/release.yml"
-ENVIRONMENT="pypi"
 PYPI_PROJECT="primary-reason"
+ENVIRONMENT="pypi"
+WORKFLOW_FILE="release.yml"
+VERSION="0.1.1"  # latest tag; bump if you release a newer one before running this
+TAG="v${VERSION}"
 
-LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.1")
+OWNER=$(echo "${REPO}" | cut -d/ -f1)
+REPO_NAME=$(echo "${REPO}" | cut -d/ -f2)
 
+# ----- preflight ----------------------------------------------------------
+command -v gh >/dev/null 2>&1 || {
+  echo "ERROR: gh CLI not found. Install: https://cli.github.com/"
+  exit 1
+}
+gh auth status >/dev/null 2>&1 || {
+  echo "ERROR: gh not authenticated. Run: gh auth login"
+  exit 1
+}
+
+# ----- Step 1 + 2: instruction screen + manual website click --------------
 cat <<EOF
 ========================================================================
-primary-reason — PyPI trusted-publisher finalization
+primary-reason ${TAG} — PyPI trusted-publisher finalization
 ========================================================================
 
 This is the ONLY remaining manual step. Total wall-clock time: ~3 minutes.
 
-Step 1/4 — Open pypi.org in your browser:
+Step 1/4 — Open this page in your browser (logged into pypi.org):
 
     https://pypi.org/manage/account/publishing/
 
-(If you have never used PyPI for this project, you may need to register the
-project name first; the "Add a new pending publisher" form is the correct
-one for a first-time setup of a yet-to-be-published project.)
+Scroll to "Add a new pending publisher" (use this form when the project is
+not yet on PyPI; if it is, the form is "Add a new publisher" under the
+existing project).
 
-Step 2/4 — Paste these exact values:
+Step 2/4 — Paste these EXACT values into the form:
 
     PyPI Project Name:    ${PYPI_PROJECT}
-    Owner:                $(echo "${REPO}" | cut -d/ -f1)
-    Repository name:      $(echo "${REPO}" | cut -d/ -f2)
-    Workflow filename:    $(basename "${WORKFLOW}")
+    Owner:                ${OWNER}
+    Repository name:      ${REPO_NAME}
+    Workflow filename:    ${WORKFLOW_FILE}
     Environment name:     ${ENVIRONMENT}
 
-    (OIDC sub claim will resolve to:
-       repo:${REPO}:environment:${ENVIRONMENT})
+Click "Add". The OIDC subject claim will resolve to:
+    repo:${REPO}:environment:${ENVIRONMENT}
 
-Press Enter once the trusted publisher has been added on pypi.org.
+When you're done on pypi.org, press Enter here to continue.
 EOF
 
 read -r _
 
+# ----- Step 3: re-run the release workflow --------------------------------
 echo
-echo "Step 3/4 — Re-running the release.yml workflow for tag ${LATEST_TAG}..."
+echo "Step 3/4 — Re-running PyPI publish for ${TAG}..."
 echo
 
-# Find the most recent release.yml run for this tag and re-run it.
 RUN_ID=$(gh run list \
     --repo "${REPO}" \
-    --workflow "release.yml" \
+    --workflow "${WORKFLOW_FILE}" \
     --limit 20 \
-    --json databaseId,headBranch,conclusion \
-    --jq "[.[] | select(.headBranch == \"${LATEST_TAG}\")] | .[0].databaseId" \
+    --json databaseId,headBranch \
+    --jq "[.[] | select(.headBranch == \"${TAG}\")] | .[0].databaseId" \
     2>/dev/null || echo "")
 
 if [ -n "${RUN_ID}" ] && [ "${RUN_ID}" != "null" ]; then
-    echo "Found run ${RUN_ID} for ${LATEST_TAG}; re-running failed jobs..."
+    echo "Found release.yml run ${RUN_ID} for ${TAG}. Re-running failed jobs..."
     gh run rerun "${RUN_ID}" --repo "${REPO}" --failed
-    echo "Waiting for the run to finish..."
-    gh run watch "${RUN_ID}" --repo "${REPO}" --exit-status || true
+    echo
+    echo "Watching the run (Ctrl+C is safe; the run continues on GitHub)..."
+    gh run watch "${RUN_ID}" --repo "${REPO}" --exit-status || \
+        echo "(watch exited; check status with: gh run view ${RUN_ID} --repo ${REPO})"
 else
-    echo "No previous release.yml run found for ${LATEST_TAG}."
-    echo "Push a new tag to trigger one, e.g.:"
-    echo "    git tag ${LATEST_TAG}.1 && git push origin ${LATEST_TAG}.1"
+    echo "No previous release.yml run found for ${TAG}."
+    echo "Trigger a fresh one by pushing a patch tag from inside the repo:"
+    echo "    git tag ${TAG}.1 && git push origin ${TAG}.1"
     exit 1
 fi
 
+# ----- Step 4: verify pip install works -----------------------------------
 echo
-echo "Step 4/4 — Verifying pip install works..."
+echo "Step 4/4 — Verifying pip can resolve ${PYPI_PROJECT}==${VERSION}..."
 echo
 
-VERSION="${LATEST_TAG#v}"
-if python3 -m pip install --dry-run "${PYPI_PROJECT}==${VERSION}" >/dev/null 2>&1; then
-    echo "  OK: ${PYPI_PROJECT}==${VERSION} is installable from PyPI."
+if command -v python3 >/dev/null 2>&1 && \
+   python3 -m pip install --dry-run "${PYPI_PROJECT}==${VERSION}" >/dev/null 2>&1; then
+    echo "  OK: ${PYPI_PROJECT}==${VERSION} is now installable from PyPI."
+    echo "       pip install ${PYPI_PROJECT}==${VERSION}"
 else
-    echo "  WARN: dry-run install failed. PyPI may not have indexed the artifact yet."
-    echo "  Wait 1-2 minutes and run: pip install ${PYPI_PROJECT}==${VERSION}"
+    echo "  PyPI may not have indexed the artifact yet (1-2 min delay is normal)."
+    echo "  Retry in a minute with:"
+    echo "       pip install ${PYPI_PROJECT}==${VERSION}"
 fi
 
 echo
-echo "Done. primary-reason ${LATEST_TAG} is on PyPI."
-echo "Update the README install hint by removing the GitHub-Release fallback paragraph."
+echo "All done. primary-reason ${TAG} is published."
+echo "Optional follow-up: edit README.md to remove the 'GitHub Release wheel'"
+echo "fallback install instructions now that PyPI works."
