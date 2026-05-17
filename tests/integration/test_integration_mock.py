@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+
 from primary_reason import ReasonCauseVerifier
 from primary_reason.adapters.mock import MockAdapter
 

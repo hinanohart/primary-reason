@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+
 from primary_reason.adapters.mock import MockAdapter
 from primary_reason.core.types import CoTStep
 from primary_reason.interventions.corruption import corrupt_step, perturbed_cot

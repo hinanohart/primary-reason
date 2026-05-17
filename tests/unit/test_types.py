@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+
 from primary_reason.core.types import (
     CoTStep,
     FaithfulnessScore,

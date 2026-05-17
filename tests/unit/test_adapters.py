@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+
 from primary_reason.adapters import build_adapter
 from primary_reason.adapters.base import LLMAdapter
 from primary_reason.adapters.mock import MockAdapter
