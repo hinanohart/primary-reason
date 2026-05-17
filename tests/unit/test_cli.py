@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typer.testing import CliRunner
-
 from primary_reason.cli import app
+from typer.testing import CliRunner
 
 runner = CliRunner()
 

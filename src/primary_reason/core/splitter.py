@@ -4,14 +4,26 @@ import re
 
 from primary_reason.core.types import CoTStep
 
-_NUMBERED = re.compile(r"(?:^|(?<=[\s.!?]))(?:\d+[.)]\s+|step\s*\d+\s*:?\s+)", re.IGNORECASE)
+_NUMBERED = re.compile(
+    # numbered list "1." / "2)" — line-anchored only (avoids breaking arithmetic CoTs)
+    r"(?:^|\n)\s*\d+[.)]\s+"
+    r"|"
+    # "Step N:" label — colon required, allowed inline (the explicit ":" is contextually
+    # distinctive and unlikely to occur inside math), but it still requires a preceding
+    # boundary char so it doesn't fire inside a longer word.
+    r"(?:^|(?<=[\s.!?]))step\s*\d+\s*:\s+",
+    re.IGNORECASE,
+)
 _SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+(?=[A-Z\d])")
 
 
 def split_cot(cot: str) -> list[CoTStep]:
     """Split a CoT trace into steps.
 
-    Strategy: prefer explicit numbering (1./2./Step 1:), fall back to sentence boundaries.
+    Numbered-list split is anchored to line starts only, so inline numerics inside a step
+    (e.g. "17 * 4. Step 1: ...") are not used as split boundaries — that previously
+    broke arithmetic / math CoTs. The "Step N:" label form still splits inline because the
+    explicit colon is contextually distinctive.
     """
     cot = cot.strip()
     if not cot:

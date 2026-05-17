@@ -11,7 +11,10 @@ from primary_reason.extractors.prompts import (
     build_primary_reason_prompt,
 )
 
-_MAX_RETRIES = 3
+# Default is 1: adapter implementations already retry transport errors via tenacity, so the
+# extractor's own retry exists only to recover from valid responses with malformed JSON. Layered
+# 3x3=9 calls per verify caused noticeable cost spikes and rate-limit pressure (v0.1.0).
+_MAX_RETRIES = 1
 
 
 def extract_primary_reasons(
@@ -23,7 +26,13 @@ def extract_primary_reasons(
 ) -> list[PrimaryReason]:
     """Extract Davidson primary reasons (pro-attitude + belief) for each CoT step.
 
-    Retries up to max_retries times on malformed JSON, returning whatever subset successfully parses.
+    Returns a list of (pro_attitude, belief, causal_role, confidence) tuples per step. These are
+    philosophical *analogues* of Davidsonian primary reasons applied to model output; the function
+    does not claim to verify intentionality. On JSON-parse failure, low-confidence
+    ``(extraction_failed)`` stubs are returned so downstream scoring still runs.
+
+    ``max_retries`` is at most a handful — the adapter already handles transport retries with
+    backoff. Default 1 means: one attempt; on malformed JSON, return stubs.
     """
     if not steps:
         return []

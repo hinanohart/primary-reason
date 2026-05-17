@@ -7,12 +7,24 @@ whether the model's outputs vary across two contrasting role-prompts that allude
 Davidson-style biographical anchoring. The score is gameable (a model can satisfy the proxy
 by echoing prefix tokens); the included control variant provides an ablation baseline.
 Treat the result as a philosophical analogue, not a realist claim.
+
+v0.1.1 statistical fixes (per re-audit):
+- The control-adjusted mean is now signed (``d - ctrl_d``, not ``max(0, d - ctrl_d)``); the
+  earlier clip biased the null distribution upward.
+- ``discriminates`` is False unless ``n_trials >= MIN_TRIALS_FOR_DISCRIMINATION`` (20). The
+  default 5-task battery is exploratory only — bootstrap CI on n=5 has no statistical force.
+- Sentinel-word filter tokenises on word characters (``\\w+``), so hyphenated echoes
+  ("causal-history") are now caught.
+- Bootstrap percentile uses ``numpy.quantile`` (interpolated) instead of integer index lookup.
 """
 
 from __future__ import annotations
 
 import random
+import re
 from collections.abc import Sequence
+
+import numpy as np
 
 from primary_reason.adapters.base import LLMAdapter
 from primary_reason.core.types import SwampmanScore
@@ -41,6 +53,9 @@ _CONTROL_PREFIX = "Answer the following briefly (2-3 sentences)."
 
 _BOOTSTRAP_ITERATIONS = 1000
 
+# n below this is documented as exploratory; ``discriminates`` will be False regardless of CI.
+MIN_TRIALS_FOR_DISCRIMINATION = 20
+
 _PREFIX_SENTINEL_WORDS = {
     "causal",
     "history",
@@ -52,6 +67,8 @@ _PREFIX_SENTINEL_WORDS = {
     "memory",
     "past",
 }
+
+_WORD_RE = re.compile(r"\w+")
 
 
 def run_stb(
@@ -66,13 +83,18 @@ def run_stb(
     """Run the Swampman Test Battery (minimal).
 
     Compares responses from two role-prompts. The First-Person Authority (FPA) proxy is the mean
-    lexical distance between the two variants across tasks. When ``apply_control_baseline`` is True
-    (default), the mean is decremented by the variant-vs-control baseline distance so that
+    signed lexical distance between the two variants across tasks. When ``apply_control_baseline``
+    is True (default), the per-task signed difference ``d - ctrl_d`` is taken so that
     prompt-echoing alone does not inflate the score. When ``filter_sentinel_words`` is True, the
-    distance is computed after removing tokens that appear in the role-prompt sentinel set, further
-    blunting the obvious Goodhart attack.
+    distance is computed after removing tokens matching the role-prompt sentinel set
+    (word-boundary aware, so hyphenated forms are caught).
 
-    The ``discriminates`` flag is set when the bootstrap 95% CI excludes 0.
+    ``discriminates`` is True only when:
+      1. ``n_trials >= MIN_TRIALS_FOR_DISCRIMINATION`` (20), AND
+      2. the bootstrap 95% CI lower bound exceeds 0.
+
+    With the default 5-task battery, ``discriminates`` is always False — the default is
+    exploratory.
     """
     if not tasks:
         tasks = DEFAULT_STB_TASKS
@@ -82,7 +104,6 @@ def run_stb(
     v0, v1 = variants
     per_task: dict[str, float] = {}
     raw_distances: list[float] = []
-    control_distances: list[float] = []
 
     for task in tasks:
         r0 = adapter.complete(task, system=_prefix_for(v0), max_tokens=300, temperature=0.0)
@@ -98,24 +119,24 @@ def run_stb(
             r_ctrl = adapter.complete(task, system=_CONTROL_PREFIX, max_tokens=300, temperature=0.0)
             r_ctrl_f = _filter_sentinels(r_ctrl) if filter_sentinel_words else r_ctrl
             ctrl_d = (lexical_distance(r0_f, r_ctrl_f) + lexical_distance(r1_f, r_ctrl_f)) / 2.0
-            adjusted = max(0.0, d - ctrl_d)
+            adjusted = d - ctrl_d  # signed; can be negative
         else:
-            ctrl_d = 0.0
             adjusted = d
 
         per_task[task] = adjusted
         raw_distances.append(adjusted)
-        control_distances.append(ctrl_d)
 
-    mean = sum(raw_distances) / len(raw_distances) if raw_distances else 0.0
+    n = len(raw_distances)
+    mean = sum(raw_distances) / n if raw_distances else 0.0
     lo, hi = _bootstrap_ci(raw_distances, seed=seed)
+    discriminates = (n >= MIN_TRIALS_FOR_DISCRIMINATION) and (lo > 0.0)
     return SwampmanScore(
         variant_with_history=v0,
         variant_without_history=v1,
         fpa_score=mean,
         bootstrap_ci=(lo, hi),
-        n_trials=len(raw_distances),
-        discriminates=lo > 0.0,
+        n_trials=n,
+        discriminates=discriminates,
         per_task=per_task,
     )
 
@@ -131,25 +152,27 @@ def _prefix_for(variant: str) -> str:
 
 
 def _filter_sentinels(text: str) -> str:
-    """Remove sentinel tokens that appear in the role-prompts; reduces echo-based gaming."""
-    words = text.split()
-    return " ".join(w for w in words if w.lower().strip(".,!?'\"") not in _PREFIX_SENTINEL_WORDS)
+    """Remove sentinel tokens that appear in the role-prompts; reduces echo-based gaming.
+
+    Tokenises on word characters (``\\w+``), so hyphenated and punctuated forms like
+    "causal-history," or "memory." are matched against the sentinel set after lowercasing.
+    """
+    tokens = _WORD_RE.findall(text.lower())
+    return " ".join(t for t in tokens if t not in _PREFIX_SENTINEL_WORDS)
 
 
 def _bootstrap_ci(
     values: Sequence[float], *, alpha: float = 0.05, seed: int = 0
 ) -> tuple[float, float]:
+    """Percentile bootstrap CI using numpy.quantile (linear interpolation)."""
     if not values:
         return (0.0, 0.0)
     rng = random.Random(seed)
     n = len(values)
-    samples: list[float] = []
-    for _ in range(_BOOTSTRAP_ITERATIONS):
+    samples = np.empty(_BOOTSTRAP_ITERATIONS, dtype=float)
+    for i in range(_BOOTSTRAP_ITERATIONS):
         boot = [values[rng.randrange(n)] for _ in range(n)]
-        samples.append(sum(boot) / n)
-    samples.sort()
-    lo_idx = int(_BOOTSTRAP_ITERATIONS * (alpha / 2))
-    hi_idx = int(_BOOTSTRAP_ITERATIONS * (1 - alpha / 2)) - 1
-    hi_idx = max(hi_idx, 0)
-    lo_idx = min(lo_idx, len(samples) - 1)
-    return (samples[lo_idx], samples[hi_idx])
+        samples[i] = sum(boot) / n
+    lo = float(np.quantile(samples, alpha / 2))
+    hi = float(np.quantile(samples, 1 - alpha / 2))
+    return (lo, hi)

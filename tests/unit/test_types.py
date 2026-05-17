@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from primary_reason.core.types import (
     CoTStep,
     FaithfulnessScore,
@@ -41,7 +40,8 @@ def test_swampman_score_defaults() -> None:
         fpa_score=0.3,
         n_trials=5,
     )
-    assert s.bootstrap_ci == (0.0, 1.0)
+    # v0.1.1: default CI widened to [-1.0, 1.0] because fpa_score is now signed.
+    assert s.bootstrap_ci == (-1.0, 1.0)
     assert s.discriminates is False
 
 

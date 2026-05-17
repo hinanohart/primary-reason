@@ -32,18 +32,24 @@ ablation. `primary-reason` adds:
 
 ## Install
 
-```bash
-pip install primary-reason
-```
-
-Optional extras:
+> PyPI trusted-publisher provisioning is in progress; until v0.1.x is on PyPI, install from the
+> GitHub Release wheel or from source:
 
 ```bash
-pip install "primary-reason[ollama]"          # local inference
-pip install "primary-reason[langfuse]"        # observability plugin
-pip install "primary-reason[embeddings]"      # embedding distance via sentence-transformers
-pip install "primary-reason[bench]"           # datasets + pandas for benchmarks
+# from a tagged release wheel (recommended)
+pip install https://github.com/hinanohart/primary-reason/releases/download/v0.1.1/primary_reason-0.1.1-py3-none-any.whl
+
+# or from source
+pip install "git+https://github.com/hinanohart/primary-reason@v0.1.1"
 ```
+
+Optional extras (same syntax with the extras suffix, e.g. ``...whl[ollama]`` or
+``...primary-reason@v0.1.1#egg=primary-reason[ollama]``):
+
+- ``ollama`` — local inference
+- ``langfuse`` — observability plugin
+- ``embeddings`` — embedding distance via ``sentence-transformers``
+- ``bench`` — ``datasets`` + ``pandas`` for benchmarks
 
 ## Quickstart (library)
 
@@ -119,30 +125,29 @@ SwampmanScore (fpa_score, bootstrap_ci, discriminates, per_task)
 If you cite FaithCoT-Bench or C2-Faith for the underlying counterfactual idea, please also
 cite them when reporting `primary-reason` results — the metric is in the same family.
 
-## Ablation: Davidson decomposition vs naive 2-prompt baseline
-
-The default behaviour of T1 is *not* free of cost. The package's `tests/` shipped fixtures
-include an ablation where Davidson three-condition extraction is compared with a single-prompt
-"summarise the reason" baseline; on the bundled 8-step golden fixtures the Davidson version
-gives strictly more structured outputs (separate pro-attitude vs belief), at the cost of one
-extra JSON-mode call per CoT. The Swampman Test Battery's control-baseline correction is what
-keeps the FPA score honest under prefix-echoing attacks.
-
 ## Limitations
 
 - The library does NOT *verify* intentionality, first-person authority, or causal history.
   It measures behavioural proxies. The Swampman score is gameable by sufficiently fluent
   prefix-echoing; the control baseline blunts the obvious attack but does not eliminate it.
+- The Swampman default 5-task battery is **exploratory only**. The ``discriminates`` flag is
+  pinned to False unless ``n_trials >= 20``; bootstrap CI on n=5 has no statistical force.
 - The default CoT splitter is regex-based and English-leaning. Multi-language or
-  heavily-formatted traces (LaTeX math, code blocks) may collapse to a single "step".
+  heavily-formatted traces (LaTeX math, code blocks) may collapse to a single "step". (As of
+  v0.1.1 the numbered-list split is anchored to line starts, so inline numerics inside a step
+  no longer break math CoTs.)
+- ``cache_dir`` and ``max_concurrency`` on ``ReasonCauseVerifier`` are accepted but not yet
+  wired into the request path; persistent caching and parallel intervention execution are
+  tracked for v0.2.0.
 - The included integration tests use `MockAdapter`. Real-LLM smoke tests are not in CI
   (cost / non-determinism). See `benchmarks/` for reproducible LLM runs.
 
 ## Roadmap
 
-- v0.1.x: bug-fix only.
+- v0.1.x: bug-fix only (v0.1.1 = splitter / Swampman statistical / JSON wrap fixes).
 - v0.2.0: T3 Deviant Causal Chain Detector (Ward 2024), T4 First-Person Authority audit,
-  T5 Basic Action Decomposition.
+  T5 Basic Action Decomposition, ``diskcache`` persistent cache, ``max_concurrency`` parallel
+  intervention execution, Davidson-vs-naive-baseline ablation harness.
 - v0.3.0: HuggingFace adapter (local transformers), batch verification API.
 
 ## Cite

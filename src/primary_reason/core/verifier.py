@@ -31,6 +31,10 @@ class ReasonCauseVerifier:
         max_concurrency: int = 4,
         seed: int = 0,
     ) -> None:
+        # NOTE: cache_dir and max_concurrency are accepted for forward-compatibility but are
+        # NOT yet wired into the request path. Persistent caching and parallel intervention
+        # execution are tracked for v0.2.0. They are stored on the instance so callers can
+        # introspect them, but currently have no runtime effect.
         self.model = model
         self.adapter = self._resolve_adapter(adapter, model)
         self.intervention_strategies = tuple(intervention_strategies)

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from primary_reason.adapters import build_adapter
 from primary_reason.adapters.base import LLMAdapter
 from primary_reason.adapters.mock import MockAdapter
@@ -90,3 +89,22 @@ def test_extract_json_invalid() -> None:
 
     out = _extract_json("not json at all")
     assert "_raw" in out
+
+
+def test_extract_json_top_level_list_wraps_as_primary_reasons() -> None:
+    """v0.1.1: a top-level JSON list (common LLM mode for the primary_reasons schema) must be
+    wrapped under {'primary_reasons': ...} so the extractor's get('primary_reasons') still works.
+    Previously it was wrapped as {'_value': ...} which silently broke extraction."""
+    from primary_reason.adapters.anthropic_adapter import _extract_json
+
+    out = _extract_json('[{"step_index": 0, "pro_attitude": "p", "belief": "b"}]')
+    assert "primary_reasons" in out
+    assert isinstance(out["primary_reasons"], list)
+    assert out["primary_reasons"][0]["step_index"] == 0
+
+
+def test_extract_json_top_level_scalar_falls_through_to_value() -> None:
+    """v0.1.1: non-list / non-dict JSON still falls back to {'_value': ...}."""
+    from primary_reason.adapters.anthropic_adapter import _extract_json
+
+    assert _extract_json("42") == {"_value": 42}

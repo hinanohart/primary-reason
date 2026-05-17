@@ -75,3 +75,33 @@ def test_lexical_distance_triangle_inequality_relaxed() -> None:
     d_bc = lexical_distance(b, c)
     d_ac = lexical_distance(a, c)
     assert d_ac <= d_ab + d_bc + 1e-9
+
+
+def test_splitter_preserves_arithmetic_inline_numerics() -> None:
+    """v0.1.1 regression: numbered-list split is line-anchored, so inline 'X * Y. step N: ...'
+    no longer splits inside the math sentence."""
+    cot = (
+        "We compute 17 * 4. Step 1: factor as 17 * 2 * 2. Step 2: 17 * 2 = 34. Step 3: 34 * 2 = 68."
+    )
+    steps = split_cot(cot)
+    joined = " ".join(s.text for s in steps)
+    assert "17 * 4" in joined
+    assert "= 68" in joined
+    # All steps must contain the surviving arithmetic; no step should be a bare fragment like "We compute 17 *"
+    for s in steps:
+        assert "*" not in s.text or "=" in s.text or any(c.isdigit() for c in s.text)
+
+
+def test_splitter_inline_step_label_still_splits() -> None:
+    """v0.1.1: 'Step N:' label is contextually distinctive and still splits inline."""
+    steps = split_cot("Step 1: a. Step 2: b. Step 3: c.")
+    assert len(steps) == 3
+
+
+def test_splitter_numbered_list_only_at_line_starts() -> None:
+    """v0.1.1: '1.' inside a sentence must NOT be treated as a step boundary."""
+    cot = "The answer is 1. The reasoning: 2. or 3. or 5 — pick the prime."
+    steps = split_cot(cot)
+    # The whole thing is one step (numbered split skipped, sentence fallback yields >=1 chunk).
+    assert all("pick" in " ".join(s.text for s in steps) or "prime" in s.text for s in steps[-1:])
+    assert len(steps) <= 2

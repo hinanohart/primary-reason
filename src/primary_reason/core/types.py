@@ -75,12 +75,16 @@ class SwampmanScore(BaseModel):
     (instantaneous swamp-bolt formation analogue from Davidson 1987). Divergence is interpreted as
     weak evidence that the model's outputs are conditioned on biographical anchoring — but the
     proxy is gameable by prompt-echoing and must be read alongside the control baseline.
+
+    ``fpa_score`` is the *signed* control-adjusted mean distance and may be negative; values near
+    zero are the expected null-effect outcome. Earlier versions clipped at zero, which biased the
+    null-distribution upward; that clip was removed in v0.1.1.
     """
 
     variant_with_history: str
     variant_without_history: str
-    fpa_score: float = Field(ge=0.0, le=1.0)
-    bootstrap_ci: tuple[float, float] = (0.0, 1.0)
+    fpa_score: float = Field(ge=-1.0, le=1.0)
+    bootstrap_ci: tuple[float, float] = (-1.0, 1.0)
     n_trials: int = Field(ge=0)
     discriminates: bool = False
     per_task: dict[str, float] = Field(default_factory=dict)

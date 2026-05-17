@@ -122,7 +122,13 @@ _FENCE = re.compile(r"```(?:json)?\s*([\s\S]*?)```")
 
 
 def _extract_json(text: str) -> dict[str, Any]:
-    """Parse JSON from possibly fenced or noisy text. Returns {} on failure (caller decides)."""
+    """Parse JSON from possibly fenced or noisy text. Returns {} on failure (caller decides).
+
+    If the model returns a top-level list (a common LLM mode for the primary-reasons schema),
+    we wrap it under ``{"primary_reasons": parsed}`` rather than the legacy ``{"_value": parsed}``
+    so the extractor's ``raw.get("primary_reasons")`` path stays functional. Other scalar types
+    still fall through to ``{"_value": ...}``.
+    """
     text = text.strip()
     if not text:
         return {}
@@ -133,6 +139,8 @@ def _extract_json(text: str) -> dict[str, Any]:
         parsed = json.loads(text)
         if isinstance(parsed, dict):
             return parsed
+        if isinstance(parsed, list):
+            return {"primary_reasons": parsed}
         return {"_value": parsed}
     except json.JSONDecodeError:
         # try to find first top-level {...}

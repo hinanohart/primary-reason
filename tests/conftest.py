@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 import pytest
-
 from primary_reason.adapters.mock import MockAdapter
 from primary_reason.core.types import CoTStep
 
