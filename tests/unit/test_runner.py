@@ -8,7 +8,7 @@ def test_iter_interventions_yields_step_strategy_pairs() -> None:
     steps = [CoTStep(index=i, text=f"step {i}") for i in range(2)]
     out = list(iter_interventions(steps, strategies=("delete",), adapter=None))
     assert len(out) == 2
-    for step, strat, perturbed_text, perturbed_full in out:
+    for _step, strat, perturbed_text, perturbed_full in out:
         assert strat == "delete"
         assert "[step omitted]" in perturbed_text
         assert "[step omitted]" in perturbed_full

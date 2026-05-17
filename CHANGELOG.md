@@ -19,5 +19,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pre-commit hooks: ruff, ruff-format, mypy strict, gitleaks, banned-phrase guard, image-URL hardcode guard
 - GitHub Actions CI: lint / typecheck / test (py3.11, py3.12) / gitleaks / docs
 - PyPI trusted publishing workflow on `v*` tags (OIDC, no token)
-- 91 tests including 7 property tests and 20 mock-integration fixtures
+- 94 tests including 7 property tests and 20 mock-integration fixtures
 - Apache-2.0 license, CITATION.cff for academic use
