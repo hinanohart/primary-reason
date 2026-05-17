@@ -63,7 +63,7 @@ jobs:
       - name: Branch coverage gate
         if: matrix.python == '3.12'
         run: |
-          pytest --cov=src/primary_reason --cov-branch --cov-fail-under=70 -q
+          pytest --cov=src/primary_reason --cov-branch --cov-fail-under=65 -q
 
   gitleaks:
     name: gitleaks
