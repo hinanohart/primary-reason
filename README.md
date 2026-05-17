@@ -1,5 +1,7 @@
 # primary-reason
 
+[![CI](https://github.com/hinanohart/primary-reason/actions/workflows/ci.yml/badge.svg)](https://github.com/hinanohart/primary-reason/actions/workflows/ci.yml)
+
 **Davidson primary-reason verifier for LLM chain-of-thought** — Apache-2.0 — Python 3.11+
 
 `primary-reason` is a model-agnostic Python library that probes whether a language model's
