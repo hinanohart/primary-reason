@@ -1,0 +1,16 @@
+title = "primary-reason gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowed safe placeholder patterns"
+paths = [
+    '''\.venv/''',
+    '''dist/''',
+    '''\.coverage''',
+]
+regexes = [
+    '''YOUR_API_KEY_HERE''',
+    '''sk-MOCK[a-z0-9]*''',
+]

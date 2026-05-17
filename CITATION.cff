@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+title: "primary-reason: Davidson primary-reason verifier for LLM chain-of-thought"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - name: hinanohart
+repository-code: "https://github.com/hinanohart/primary-reason"
+license: Apache-2.0
+keywords:
+  - "large language models"
+  - "chain-of-thought faithfulness"
+  - "Donald Davidson"
+  - "interpretability"

@@ -1,0 +1,48 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=512"]
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.7
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.1
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - "pydantic>=2.6,<3"
+          - "types-requests"
+        args: ["--config-file=pyproject.toml"]
+        exclude: "^(tests/|benchmarks/|examples/|docs/)"
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: no-overclaim-phrases
+        name: reject overclaim phrases (see scripts/check_banned_phrases.py BANNED list)
+        entry: python3 scripts/check_banned_phrases.py
+        language: system
+        pass_filenames: false
+
+      - id: no-main-image-hardcode
+        name: reject README images hardcoded to /main/ raw URLs (mosaicraft trap guard)
+        entry: python3 scripts/check_image_urls.py
+        language: system
+        pass_filenames: false
