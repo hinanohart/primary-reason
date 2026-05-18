@@ -7,7 +7,7 @@ date-released: "2026-05-18"
 authors:
   - name: hinanohart
 repository-code: "https://github.com/hinanohart/primary-reason"
-license: Apache-2.0
+license: MIT
 keywords:
   - "large language models"
   - "chain-of-thought faithfulness"

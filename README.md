@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/hinanohart/primary-reason/actions/workflows/ci.yml/badge.svg)](https://github.com/hinanohart/primary-reason/actions/workflows/ci.yml)
 
-**Davidson primary-reason verifier for LLM chain-of-thought** — Apache-2.0 — Python 3.11+
+**Davidson primary-reason verifier for LLM chain-of-thought** — MIT — Python 3.11+
 
 `primary-reason` is a model-agnostic Python library that probes whether a language model's
 chain-of-thought (CoT) actually behaves like a Davidsonian *primary reason* — a (pro-attitude,
@@ -160,10 +160,10 @@ cite them when reporting `primary-reason` results — the metric is in the same 
   author = {hinanohart},
   year   = {2026},
   url    = {https://github.com/hinanohart/primary-reason},
-  license = {Apache-2.0},
+  license = {MIT},
 }
 ```
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE).
