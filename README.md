@@ -15,6 +15,27 @@ belief, causal-role) triple in the sense of Donald Davidson's "Actions, Reasons,
 
 ---
 
+## Why this exists
+
+Four projects in 2025-2026 measure CoT faithfulness or rationalisation audit
+(FaithCoT-Bench, C2-Faith, Lie to Me, Project Ariadne). None of them route the analysis
+through Davidson's account of action explanation, none of them ship a Swampman-style
+ablation. `primary-reason` adds:
+
+1. **Davidson primary-reason decomposition** — every CoT step is decomposed into a
+   (pro-attitude, belief, causal-role, confidence) tuple. The pro-attitude / belief split is
+   what distinguishes Davidson's account from a unitary "intent" or "goal" notion.
+2. **Counterfactual faithfulness** with three intervention families — delete, paraphrase,
+   negate — and three distance metrics (exact / lexical / embedding). Follows the spirit of
+   FRIT and Hase & Potts CST, but exposes the intervention layer as a first-class API.
+3. **Swampman Test Battery (T1.5, minimal)** — contrasts a "causal history" role-prompt
+   variant against a "no history" variant, with a *control baseline* and *sentinel-word filter*
+   so prefix-echoing alone cannot inflate the score. Bootstrap 95% CI for discrimination.
+4. **Model-agnostic by construction** — anthropic / openai / ollama / mock adapters via a
+   small `Protocol`. Add your own provider in ~100 lines.
+
+---
+
 ## Architecture overview
 
 ```mermaid
@@ -35,27 +56,6 @@ flowchart TD
     M --> E
     M --> K
 ```
-
----
-
-## Why this exists
-
-Four projects in 2025-2026 measure CoT faithfulness or rationalisation audit
-(FaithCoT-Bench, C2-Faith, Lie to Me, Project Ariadne). None of them route the analysis
-through Davidson's account of action explanation, none of them ship a Swampman-style
-ablation. `primary-reason` adds:
-
-1. **Davidson primary-reason decomposition** — every CoT step is decomposed into a
-   (pro-attitude, belief, causal-role, confidence) tuple. The pro-attitude / belief split is
-   what distinguishes Davidson's account from a unitary "intent" or "goal" notion.
-2. **Counterfactual faithfulness** with three intervention families — delete, paraphrase,
-   negate — and three distance metrics (exact / lexical / embedding). Follows the spirit of
-   FRIT and Hase & Potts CST, but exposes the intervention layer as a first-class API.
-3. **Swampman Test Battery (T1.5, minimal)** — contrasts a "causal history" role-prompt
-   variant against a "no history" variant, with a *control baseline* and *sentinel-word filter*
-   so prefix-echoing alone cannot inflate the score. Bootstrap 95% CI for discrimination.
-4. **Model-agnostic by construction** — anthropic / openai / ollama / mock adapters via a
-   small `Protocol`. Add your own provider in ~100 lines.
 
 ---
 
@@ -105,6 +105,8 @@ print(result.faithfulness.score)        # aggregate faithfulness in [0, 1]
 print(result.primary_reasons)           # list of (pro_attitude, belief, causal_role, confidence)
 print(result.faithfulness.per_step)     # per-step causal-effect dict
 ```
+
+---
 
 ## Quickstart (CLI)
 
