@@ -13,6 +13,31 @@ belief, causal-role) triple in the sense of Donald Davidson's "Actions, Reasons,
 > LLM behaviour. The library does not claim to verify intentionality, first-person authority,
 > or causal history in any realist sense. Read every output through that frame.
 
+---
+
+## Architecture overview
+
+```mermaid
+flowchart TD
+    A[prompt and CoT text] --> B[CoT Splitter]
+    B --> C[list of CoTStep]
+    C --> D[T1 Primary Reason Extractor]
+    C --> E[T2 Intervention Runner]
+    D --> F[list of PrimaryReason\npro_attitude belief causal_role confidence]
+    E --> G[perturbed answers\ndelete paraphrase negate]
+    G --> H[Distance Metrics\nexact lexical embedding]
+    H --> I[FaithfulnessScore\naggregate and per_step]
+    F --> J[VerificationResult]
+    I --> J
+    K[Swampman Test Battery\nT1_5 optional] --> L[SwampmanScore\nfpa_score bootstrap_ci discriminates]
+    L --> J
+    M[LLM Adapter\nanthropic openai ollama mock] --> D
+    M --> E
+    M --> K
+```
+
+---
+
 ## Why this exists
 
 Four projects in 2025-2026 measure CoT faithfulness or rationalisation audit
@@ -32,6 +57,8 @@ ablation. `primary-reason` adds:
 4. **Model-agnostic by construction** — anthropic / openai / ollama / mock adapters via a
    small `Protocol`. Add your own provider in ~80 lines.
 
+---
+
 ## Install
 
 > PyPI trusted-publisher provisioning is in progress; until v0.1.x is on PyPI, install from the
@@ -48,10 +75,14 @@ pip install "git+https://github.com/hinanohart/primary-reason@v0.1.1"
 Optional extras (same syntax with the extras suffix, e.g. ``...whl[ollama]`` or
 ``...primary-reason@v0.1.1#egg=primary-reason[ollama]``):
 
-- ``ollama`` — local inference
-- ``langfuse`` — observability plugin
-- ``embeddings`` — embedding distance via ``sentence-transformers``
-- ``bench`` — ``datasets`` + ``pandas`` for benchmarks
+| Extra | Purpose |
+|-------|---------|
+| `ollama` | local inference |
+| `langfuse` | observability plugin |
+| `embeddings` | embedding distance via `sentence-transformers` |
+| `bench` | `datasets` + `pandas` for benchmarks |
+
+---
 
 ## Quickstart (library)
 
@@ -87,32 +118,40 @@ primary-reason extract "task prompt" --cot "@trace.txt"
 primary-reason stb --adapter anthropic --model claude-opus-4-7
 ```
 
+---
+
 ## How it works
 
-```
-prompt + CoT
-   |
-   v
-splitter --> list[CoTStep]
-                |
-                +--> T1 extractor --> list[PrimaryReason]   (pro_attitude, belief, causal_role, confidence)
-                |
-                +--> T2 interventions (delete / paraphrase / negate) per step
-                               |
-                               v
-                         distance(original_answer, perturbed_answer)
-                               |
-                               v
-                         FaithfulnessScore (aggregate + per-step + raw interventions)
+**Step 1 — Split**: The input CoT string is parsed by a regex-based splitter into a list of
+`CoTStep` objects (index, text, role).
 
-stb-only path
-   |
-   v
-2 role-prompts (with-history / without-history) + control baseline
-   |
-   v
-SwampmanScore (fpa_score, bootstrap_ci, discriminates, per_task)
-```
+**Step 2 — T1 Primary Reason Extraction**: Each step is sent to the configured LLM adapter
+with a structured prompt. The LLM returns a `PrimaryReason` tuple: `pro_attitude` (what the
+model "wants"), `belief` (what it treats as true), `causal_role` (what causal function it
+plays), and a `confidence` float.
+
+**Step 3 — T2 Counterfactual Interventions**: Each step is independently perturbed under one
+or more strategies (delete / paraphrase / negate). The model re-runs on the modified CoT.
+Distance between the original and perturbed answers (exact / lexical / embedding) becomes
+the per-step causal contribution. The aggregate `FaithfulnessScore.score` is the mean
+cross-step contribution.
+
+**Step 4 — T1.5 Swampman Test Battery (optional)**: Two role-prompt variants
+("with causal history" vs. "without") are run on a small task battery. Bootstrap 95% CI
+tests whether the model's behaviour discriminates the two conditions. A sentinel-word filter
+prevents prefix-echoing from inflating the score.
+
+### Key data types
+
+| Type | Fields |
+|------|--------|
+| `CoTStep` | `index`, `text`, `role` |
+| `PrimaryReason` | `step_index`, `pro_attitude`, `belief`, `causal_role`, `confidence` |
+| `FaithfulnessScore` | `score`, `per_step`, `interventions`, `method` |
+| `SwampmanScore` | `fpa_score`, `bootstrap_ci`, `discriminates`, `per_task` |
+| `VerificationResult` | `steps`, `primary_reasons`, `faithfulness`, `swampman_score` |
+
+---
 
 ## Related work and differentiation
 
@@ -126,6 +165,8 @@ SwampmanScore (fpa_score, bootstrap_ci, discriminates, per_task)
 
 If you cite FaithCoT-Bench or C2-Faith for the underlying counterfactual idea, please also
 cite them when reporting `primary-reason` results — the metric is in the same family.
+
+---
 
 ## Limitations
 
@@ -144,6 +185,8 @@ cite them when reporting `primary-reason` results — the metric is in the same 
 - The included integration tests use `MockAdapter`. Real-LLM smoke tests are not in CI
   (cost / non-determinism). See `benchmarks/` for reproducible LLM runs.
 
+---
+
 ## Roadmap
 
 - v0.1.x: bug-fix only (v0.1.1 = splitter / Swampman statistical / JSON wrap fixes).
@@ -151,6 +194,8 @@ cite them when reporting `primary-reason` results — the metric is in the same 
   T5 Basic Action Decomposition, ``diskcache`` persistent cache, ``max_concurrency`` parallel
   intervention execution, Davidson-vs-naive-baseline ablation harness.
 - v0.3.0: HuggingFace adapter (local transformers), batch verification API.
+
+---
 
 ## Cite
 
