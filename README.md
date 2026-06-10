@@ -23,15 +23,15 @@ flowchart TD
     B --> C[list of CoTStep]
     C --> D[T1 Primary Reason Extractor]
     C --> E[T2 Intervention Runner]
-    D --> F[list of PrimaryReason\npro_attitude belief causal_role confidence]
-    E --> G[perturbed answers\ndelete paraphrase negate]
-    G --> H[Distance Metrics\nexact lexical embedding]
-    H --> I[FaithfulnessScore\naggregate and per_step]
+    D --> F[list of PrimaryReason<br>pro_attitude belief causal_role confidence]
+    E --> G[perturbed answers<br>delete paraphrase negate]
+    G --> H[Distance Metrics<br>exact lexical embedding]
+    H --> I[FaithfulnessScore<br>aggregate and per_step]
     F --> J[VerificationResult]
     I --> J
-    K[Swampman Test Battery\nT1_5 optional] --> L[SwampmanScore\nfpa_score bootstrap_ci discriminates]
+    K[Swampman Test Battery<br>T1_5 optional] --> L[SwampmanScore<br>fpa_score bootstrap_ci discriminates]
     L --> J
-    M[LLM Adapter\nanthropic openai ollama mock] --> D
+    M[LLM Adapter<br>anthropic openai ollama mock] --> D
     M --> E
     M --> K
 ```
