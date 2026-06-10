@@ -1,0 +1,55 @@
+direction: down
+explanation: |md
+  ### primary-reason
+  **Davidson primary-reason verifier for LLM chain-of-thought** — probes whether CoT behaves like a causal primary reason or post-hoc rationalisation.
+| {near: top-center}
+
+input: "① prompt and CoT text" {shape: oval; style: {fill: "#6366f1"; font-color: "#ffffff"; stroke: "#4338ca"; bold: true; font-size: 18}}
+splitter: "② CoT Splitter" {style: {fill: "#0ea5e9"; font-color: "#ffffff"; stroke: "#0369a1"; bold: true; font-size: 18}}
+cot_steps: "② list of CoTStep" {style: {fill: "#0ea5e9"; font-color: "#ffffff"; stroke: "#0369a1"; bold: true; font-size: 16}}
+input -> splitter: "② split"
+splitter -> cot_steps: "② emit"
+
+reason_zone: "Primary Reason Analysis" {
+  style: {fill: "#f0fdf4"; stroke: "#10b981"; font-color: "#065f46"; bold: true; font-size: 16}
+  t1: "③ T1 Primary Reason Extractor"
+  reasons: "③ list of PrimaryReason\npro_attitude  belief\ncausal_role  confidence"
+  *.style.fill: "#dcfce7"; *.style.font-color: "#065f46"
+}
+
+intervention: "Intervention & Faithfulness" {
+  style: {fill: "#fffbeb"; stroke: "#f59e0b"; font-color: "#92400e"; bold: true; font-size: 16}
+  t2: "③ T2 Intervention Runner"
+  perturbed: "④ perturbed answers\ndelete  paraphrase  negate"
+  dist: "④ Distance Metrics\nexact  lexical  embedding"
+  faith: "④ FaithfulnessScore\naggregate + per_step"
+  *.style.fill: "#fef3c7"; *.style.font-color: "#92400e"
+}
+
+llm: "LLM Adapter\nanthropic  openai\nollama  mock" {style: {fill: "#fef3c7"; font-color: "#92400e"; stroke: "#f59e0b"; bold: true}}
+
+cot_steps -> reason_zone.t1: "③ extract"
+cot_steps -> intervention.t2: "③ intervene"
+reason_zone.t1 -> reason_zone.reasons
+intervention.t2 -> intervention.perturbed
+intervention.perturbed -> intervention.dist
+intervention.dist -> intervention.faith
+llm -> reason_zone.t1: "③ call"
+llm -> intervention.t2: "③ call"
+
+swampman: "Swampman Test Battery\nT1_5 optional" {style: {fill: "#dcfce7"; font-color: "#065f46"; stroke: "#10b981"; bold: true}}
+swamp_score: "⑤ SwampmanScore\nfpa_score  bootstrap_ci" {style: {fill: "#dcfce7"; font-color: "#065f46"; stroke: "#10b981"; bold: true}}
+llm -> swampman: "⑤ call"
+swampman -> swamp_score
+
+result: "⑤ VerificationResult" {shape: cylinder; style: {fill: "#fdf2f8"; stroke: "#ec4899"; font-color: "#9d174e"; bold: true}}
+reason_zone.reasons -> result: "⑤ combine"
+intervention.faith -> result: "⑤ combine"
+swamp_score -> result: "⑤ combine"
+
+legend: "Legend" {
+  near: bottom-center
+  style: {fill: "#f8fafc"; stroke: "#cbd5e1"; font-size: 13}
+  e: "● entry"; c: "● core"; p: "● reason"; b: "● intervention"; d: "● output"
+  e.style.font-color: "#4338ca"; c.style.font-color: "#0369a1"; p.style.font-color: "#10b981"; b.style.font-color: "#f59e0b"; d.style.font-color: "#ec4899"
+}

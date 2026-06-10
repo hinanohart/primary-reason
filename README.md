@@ -38,24 +38,9 @@ ablation. `primary-reason` adds:
 
 ## Architecture overview
 
-```mermaid
-flowchart TD
-    A[prompt and CoT text] --> B[CoT Splitter]
-    B --> C[list of CoTStep]
-    C --> D[T1 Primary Reason Extractor]
-    C --> E[T2 Intervention Runner]
-    D --> F[list of PrimaryReason<br>pro_attitude belief causal_role confidence]
-    E --> G[perturbed answers<br>delete paraphrase negate]
-    G --> H[Distance Metrics<br>exact lexical embedding]
-    H --> I[FaithfulnessScore<br>aggregate and per_step]
-    F --> J[VerificationResult]
-    I --> J
-    K[Swampman Test Battery<br>T1_5 optional] --> L[SwampmanScore<br>fpa_score bootstrap_ci discriminates]
-    L --> J
-    M[LLM Adapter<br>anthropic openai ollama mock] --> D
-    M --> E
-    M --> K
-```
+<div align="center">
+  <img src="docs/architecture.png" alt="primary-reason architecture" width="840">
+</div>
 
 ---
 
@@ -214,3 +199,4 @@ cite them when reporting `primary-reason` results — the metric is in the same 
 ## License
 
 MIT License. See [LICENSE](LICENSE).
+
