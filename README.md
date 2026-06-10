@@ -183,7 +183,7 @@ cite them when reporting `primary-reason` results — the metric is in the same 
   wired into the request path; persistent caching and parallel intervention execution are
   tracked for v0.2.0.
 - The included integration tests use `MockAdapter`. Real-LLM smoke tests are not in CI
-  (cost / non-determinism). See `benchmarks/` for reproducible LLM runs.
+  (cost / non-determinism).
 
 ---
 
