@@ -55,7 +55,7 @@ ablation. `primary-reason` adds:
    variant against a "no history" variant, with a *control baseline* and *sentinel-word filter*
    so prefix-echoing alone cannot inflate the score. Bootstrap 95% CI for discrimination.
 4. **Model-agnostic by construction** — anthropic / openai / ollama / mock adapters via a
-   small `Protocol`. Add your own provider in ~80 lines.
+   small `Protocol`. Add your own provider in ~100 lines.
 
 ---
 
